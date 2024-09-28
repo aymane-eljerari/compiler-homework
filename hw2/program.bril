@@ -1,0 +1,37 @@
+@main {
+  v0: int = const 5;
+  x: int = id v0;
+  v1: int = const 13;
+  y: int = id v1;
+  v2: int = id x;
+  v3: int = id y;
+  v4: int = add v2 v3;
+  a: int = id v4;
+  v5: int = id x;
+  v6: int = id y;
+  v7: int = add v5 v6;
+  b: int = id v7;
+  v8: int = id a;
+  v9: int = const 2;
+  v10: int = mul v8 v9;
+  c: int = id v10;
+  v11: int = id b;
+  v12: int = const 2;
+  v13: int = mul v11 v12;
+  d: int = id v13;
+  v14: int = id a;
+  v15: int = const 15;
+  v16: int = add v14 v15;
+  e: int = id v16;
+  v17: int = id d;
+  v18: int = id b;
+  v19: int = sub v17 v18;
+  f: int = id v19;
+  v20: int = id f;
+  v21: int = const 1;
+  v22: int = add v20 v21;
+  g: int = id v22;
+  v23: int = id f;
+  print v23;
+  v24: int = const 0;
+}

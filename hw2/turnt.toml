@@ -1,0 +1,14 @@
+
+
+[envs.baseline]
+command = "brili -p < {filename}"
+out_dir = "./turnt_test"
+
+[envs.dce] 
+command = "python3 dce.py {filename} | brili < {filename}_dce"
+out_dir = "./turnt_test"
+
+[envs.lvn]
+command = "python3 lvn.py {filename} | brili -p < {filename}_lvn"
+out_dir = "./turnt_test"
+

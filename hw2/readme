@@ -1,0 +1,156 @@
+
+This assignment assumes that the input program is a single block. Multi block programs might not work as intended. Parsing the program into multiple blocks is handled by the helper functions inside `cfg.py`.
+
+# Part 1: implementing trivial deadcode elimination
+
+I begin by setting up a class to perform dead code elimination, the class takes as input the program, and parses it before begining to perform the dce optimization. The `block_dce()` function performs the heavy lifting. Despite the fact that my implementation only works for a single block, I've tried to modularize the code such that a multi block implementation is easier. 
+
+```
+# perform deadcode elimination on a single block
+def block_dce(self, block):
+    for instr in block:
+        if "args" not in instr.keys():
+            continue
+        self.used.update(instr["args"])
+    
+    for i in range(len(block)-1, -1, -1):
+        if "dest" in block[i].keys() and block[i]["dest"] not in self.used:
+            rm_instr = block.pop(i)
+            # print(f"Instruction removed:\n {rm_instr}. Destination {rm_instr["dest"]} was not used")   
+    return block
+```
+
+The function loops over all instructions in the block adding only the instructions that have arguments to a set. This is done to keep track of all arguments that are used in the block. The second pass, loops over all instrucitons backwards. 
+
+If an instruction has a destination variable that doesn't exists in the set of used variables we know that it is a dead instruction, therefore we can delete it.
+
+Let's look at an example typescript program:
+
+```
+let x = 5n;  
+let y = 13n;
+
+let a = x + y;
+let b = x + y;
+let c = a * 2n;     # c is not used
+let d = b * 2n;     
+
+let e = a + 15n;    # e is not used
+let f = d - b;
+let g = f + 1n;     # g is not used
+
+console.log(f);
+```
+
+We should be able to eliminate 3 instructions. 
+
+`program.bril`: text representation.
+`program_j.bril`: json representation.
+`program.bril_dce`: json representation with the dce pass.
+
+We want to compare the number of instructions between `program_j.bril` and `program.bril_dce` and make sure the outputs are the same.
+
+```
+$ wc program_j.bril && brili < program_j.bril
+     280     421    4942 program_j.bril
+18
+```
+
+```
+$ wc program.bril_dce && brili < program.bril_dce
+     249     375    6781 program.bril_dce
+18
+```
+
+We notice a reduction in the number of lines from 280, down to 249. Most of this reduction is a direct result of the json format returning to a new line after every entry. So most lines only contain a bracket, or a comma. The output (`18`) is the same for both programs.
+
+
+# Part 2: implementing local value numbering
+
+My lvn implementation involves two main functions: `vn_gen()` to generate the value number, and `lvn()` which performs the lvn pass.
+
+The `vn_gen()` function returns the value number of a variable. If the variable doesn't exist, we add it to the table, and increment the value number for the next variable.
+
+```
+    def vn_gen(self, var):
+        if var not in self.vn2var.keys():
+            self.vn2var[var] = self.vn
+            self.vn += 1
+        return self.vn2var[var] 
+    
+    def lvn(self, block):
+        for instr in block:
+            if "dest" in instr.keys():
+                if "args" in instr.keys():
+                    values = [self.vn_gen(arg) for arg in instr["args"]]
+                    hash_entry = (instr["op"], *values)
+                    canonical_var = instr["dest"]
+                else:   
+                    val = instr["value"]
+                    values = [self.vn_gen(instr["dest"])]
+                    hash_entry = (instr["op"], val)
+                    canonical_var = instr["dest"]
+                
+                if hash_entry in self.hash_table.keys():
+                    vn = self.hash_table[hash_entry]["vn"]
+                    canonical_var = self.hash_table[hash_entry]["canncl_var"]
+                    self.vn2var[instr["dest"]] = vn
+                    instr["dest"] = canonical_var
+                
+                else:
+                    new_vn = self.vn_gen(instr["dest"])
+                    self.hash_table[hash_entry] = {"vn": new_vn, "canncl_var": canonical_var}
+            else:
+                continue
+        return block
+```
+
+The `lvn()` function loops over all instructions in a block. If an instruction doesn't contain a destination, we skip it. Otherwise, we check if the instruction contains arguments, if so, we calculate the value numebers of all arguments, and create the hash entry using those value numbers. If the instruction doesn't contain arguments, then we only need to compute the value number of the destination variable, and use it to generate a hash entry.
+
+Finally, we need to check if the hash entry already exists in the table. If so, we update the structs to avoid recomputing the same value. 
+
+
+In the program below, the `sum2` operation is redundant. Let's see how the lvn algorithm modifices the code:
+
+```
+@main {
+    a: int = const 4;
+    b: int = const 2;
+    sum1: int = add a b;
+    sum2: int = add a b;
+    prod: int = mul sum1 sum2;
+    print prod;
+}
+```
+Runing the lvn pass we notice that the `sum2` instruction was rewritten in terms of `sum1`
+```
+python3 lvn.py test.bril && bril2txt < test.bril_lvn
+@main {
+  a: int = const 4;
+  b: int = const 2;
+  sum1: int = add a b;
+  sum2: int = const sum1;
+  prod: int = mul sum1 sum2;
+  print prod;
+}
+
+```
+Value Number Table
+```
+{'a': 1, 'b': 2, 'sum1': 3, 'sum2': 3, 'prod': 4}
+```
+
+
+Hash Table:
+
+```
+{('const', 4): {'vn': 1, 'canncl_var': 'a'}, ('const', 2): {'vn': 2, 'canncl_var': 'b'}, ('add', 1, 2): {'vn': 3, 'canncl_var': 'sum1'}, ('mul', 3, 3): {'vn': 4, 'canncl_var': 'prod'}}
+```
+
+# Things I found challenging
+
+Handling the formatting of the input and output to each command was a little tricky. It's sometimes confusing trying to keep track of which format is being used at a specific instance when piping different commands into each other.
+
+For example, it seems like the `brili` interpreter can not read a program from stdin, instead the filename has to be provided as input `brili < {filename}`. This makes it difficult to pipe programs into brili, which requires running `bril2txt` and `bril2json` commands manually to guarantee correct execution.
+
+Code can be found [here]()
