@@ -1,0 +1,3 @@
+[envs.live]
+command = "bril2json < {filename} | python3 dfa.py"
+

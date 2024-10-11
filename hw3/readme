@@ -1,0 +1,67 @@
+
+In order to perform data flow analysis on a bril program, we need to perform certain preprocessing operations to create a control flow graph. Once the control flow graph is built, we need to run the iterative worklist algorithm to solve the dataflow analysis. For this assignment, I used certain functions from the bril repository to faciliate the generation of the block mapping. I focused on implementing the Liveness data flow analysis.
+
+Key Components of the DFA Program for this assignment are:
+
+DFA.get_successors(self, block)
+
+This function determines the successors of a block (basic block of instructions). It does so based on the last instruction in a block, if it’s a jmp or br (branch) operation, the function returns the successors (.ie next block in the control flow graph (cfg)). If it’s a ret (return), there are no successors.
+
+DFA.generate_graph(self, blocks)
+
+This function builds the cfg for the program. It initializes empty lists for the predecessors and successors of each block. For each block, it determines the block’s successors and makes the current block a predecessor to all of its successors.
+This forms the graph that the DFA algorithm will traverse.
+
+DFA.analyze_dataflow(self, blocks, analysis)
+
+	•	This is the function that conducts the actual data flow analysis by iterating over the control flow graph. Since liveness is a backwards algorithm, we start from the last block. The function uses the worklist algorithm to iteratively merge information using the transfer function.
+
+The transfer function for liveness is  
+
+$$IN = GEN \space \cup \space (OUT - KILL)$$
+
+The `bril` repository contains programs on which to perform data flow analysis. Let's look at the `cond.bril` program:
+
+```
+@main {
+  a: int = const 47;
+  b: int = const 42;
+  cond: bool = const true;
+  br cond .left .right;
+.left:
+  b: int = const 1;
+  c: int = const 5;
+  jmp .end;
+.right:
+  a: int = const 2;
+  c: int = const 10;
+  jmp .end;
+.end:
+  d: int = sub a c;
+  print d;
+}
+```
+
+Without performing any data flow analysis, we can, just by looking at this program, know that the only variables that reach a use are `a` and `c` when executing this instruction: `d: int = sub a c`. On the other hand, we expect not to see `b` in the liveness data flow analysis, since not instruction uses `b` as an argument. Below is the output for the livenes pass:
+
+```
+$ bril2json < cond.bril | python3 dfa.py
+b1:
+  in:  ∅
+  out: a
+left:
+  in:  a
+  out: a, c
+right:
+  in:  ∅
+  out: a, c
+end:
+  in:  a, c
+  out: ∅
+```
+
+
+I started the assignment by attempting to implement a generic approach, but it turned out to be more challenging than I expected. Eventually, I focused on implementing dataflow analysis specifically for liveness. The complexity mainly came from trying to create a modular worklist algorithm that could be parametrized with different inputs, such as the merge operation, transfer function, and whether the analysis is forward or backward.
+
+
+
