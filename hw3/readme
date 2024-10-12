@@ -1,20 +1,87 @@
+---
+author: Aymane El Jerari
+format:
+  html: default
+title: Homework 3 -- Implementing Liveness Dataflow Analysis
 
+---
 In order to perform data flow analysis on a bril program, we need to perform certain preprocessing operations to create a control flow graph. Once the control flow graph is built, we need to run the iterative worklist algorithm to solve the dataflow analysis. For this assignment, I used certain functions from the bril repository to faciliate the generation of the block mapping. I focused on implementing the Liveness data flow analysis.
 
 Key Components of the DFA Program for this assignment are:
 
-DFA.get_successors(self, block)
+### Getting the successors of each block
+```
+    def get_successors(self, block):
+        # last instr in block
+        instr = block[-1]
+        # get successors
+        if instr['op'] in ['jmp', 'br']:
+            return instr['labels']
+        # no successor
+        elif instr['op'] == 'ret':
+            return []
+        else: 
+            return
+```
 
 This function determines the successors of a block (basic block of instructions). It does so based on the last instruction in a block, if it’s a jmp or br (branch) operation, the function returns the successors (.ie next block in the control flow graph (cfg)). If it’s a ret (return), there are no successors.
 
-DFA.generate_graph(self, blocks)
+### Generating the graph
+
+```
+    def generate_graph(self, blocks):
+        # init all to empty lists
+        self.predecessors = {blk_id: [] for blk_id in blocks}
+        self.successors = {blk_id: [] for blk_id in blocks}
+        for name, block in blocks.items():
+            # get all succcessors
+            successors = self.get_successors(block)
+            self.successors[name].extend(successors) 
+            
+            # make current block predecessors to all its successors
+            for s in successors:
+                self.predecessors[s].append(name)
+```
 
 This function builds the cfg for the program. It initializes empty lists for the predecessors and successors of each block. For each block, it determines the block’s successors and makes the current block a predecessor to all of its successors.
 This forms the graph that the DFA algorithm will traverse.
 
-DFA.analyze_dataflow(self, blocks, analysis)
+```
+    def analyze_dataflow(self, blocks):
+        # generate successors and predecessors for every block
+        self.generate_graph(blocks)
 
-	•	This is the function that conducts the actual data flow analysis by iterating over the control flow graph. Since liveness is a backwards algorithm, we start from the last block. The function uses the worklist algorithm to iteratively merge information using the transfer function.
+        # start from the last block
+        blk_start = list(blocks.keys())[-1]
+        in_set = self.successors
+        out_set = self.predecessors
+
+        # init first block
+        self.in_set = {blk_start: set()}
+        self.out_set = {blk: set() for blk in blocks}
+
+        # iterative worklist dataflow algorithm
+        worklist = list(blocks.keys())
+        while worklist:
+            blk = worklist.pop(0)
+
+            # in values = merge all previous value 
+            in_val = self.union_op(self.out_set[n] for n in in_set[blk])
+            self.in_set[blk] = in_val
+            
+            # out values generated using the transfer function
+            out_val = self.transfer_func(blocks[blk], in_val)
+
+            # if there was a change
+            if out_val != self.out_set[blk]:
+                # update
+                self.out_set[blk] = out_val
+                # add item to the workloist
+                worklist += out_set[blk]
+
+        return self.out_set, self.in_set
+```
+This is the function that conducts the data flow analysis by iterating over the control flow graph. Since liveness is a backwards algorithm, we start from the last block. The function uses the worklist algorithm to iteratively merge information using the transfer function.
 
 The transfer function for liveness is  
 
