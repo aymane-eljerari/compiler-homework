@@ -1,0 +1,24 @@
+@main {
+  i: int = const 0;
+  a: int = const 5;
+  b: int = const 6;
+.outer_loop:
+  cond_outer: bool = lt i a;
+  br cond_outer .inner_loop .outer_exit;
+
+.inner_loop:
+  j: int = const 0;
+  cond_inner: bool = lt j b;
+  br cond_inner .inner_body .inner_exit;
+
+.inner_body:
+  j: int = add j b;
+  jmp .inner_loop;
+
+.inner_exit:
+  i: int = add i a;
+  jmp .outer_loop;
+
+.outer_exit:
+  print i;
+}

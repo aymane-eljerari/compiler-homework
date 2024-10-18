@@ -1,0 +1,17 @@
+@main {
+  a: int = const 1;
+  cond: bool = le a a;
+  br cond .then .else;
+
+.then:
+  b: int = add a a;
+  jmp .end;
+
+.else:
+  c: int = mul a a;
+  jmp .end;
+
+.end:
+  d: int = const 0;
+  print d;
+}

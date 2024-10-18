@@ -1,0 +1,22 @@
+@main{
+.A:
+    a: int = const 1;
+    b: int = const 0;
+    cond1: bool = a;
+    br cond1 .B .F;
+.B:
+    br cond1 .C .D;
+
+.C:
+    jmp .E;
+
+
+.D:
+    jmp .E;
+
+.E:
+    jmp .F;
+
+.F:
+    print b;
+}

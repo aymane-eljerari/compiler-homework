@@ -1,0 +1,29 @@
+@main {
+.entry:
+  x: int = const 10;
+  
+.a:
+  y: int = const 5;
+  
+.b:
+  condA: bool = gt x y;
+  br condA .c .g;
+
+.c:
+  z1: int = add x y;
+  
+.d:
+  condB: bool = lt z1 x;
+  br condB .e .f;
+
+.e:
+  z2: int = sub z1 y;
+  
+.f:
+.g:
+.h:
+  m: int = phi z2 .e y .f x .g;
+  
+.exit:
+  print m;
+}

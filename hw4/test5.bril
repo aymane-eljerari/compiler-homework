@@ -1,0 +1,33 @@
+@main {
+.entry:
+    a: int = const 0;
+    b: int = const 10;
+    c: int = const 1;
+    d: int = const 0;
+    jmp .a;  
+
+.a:  
+    cond1: bool = lt a b;
+    br cond1 .b .f;  
+
+.b:
+    d: int = add d c;
+    a: int = add a c;
+    jmp .c;
+
+.c:
+    cond2: bool = lt d b;
+    br cond2 .d .e;
+
+.d:
+    d: int = add d c;
+    jmp .c;
+
+.e:
+    jmp .a;  
+
+.f:  
+    e: int = const 20;
+    f: int = mul d e;
+    print f;
+}

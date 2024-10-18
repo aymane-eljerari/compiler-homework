@@ -1,0 +1,34 @@
+@main {
+  x: int = const 1;
+  y: int = const 2;
+  
+.entry:
+  z: int = add x y;
+  
+.branch1:
+  cond1: bool = le x y;
+  br cond1 .then1 .else1;
+
+.then1:
+  t1: int = mul x z;
+  jmp .merge;
+
+.else1:
+  t2: int = sub y z;
+  
+.branch2:
+  cond2: bool = gt t2 x;
+  br cond2 .then2 .else2;
+
+.then2:
+  t3: int = add t2 x;
+  
+.else2:
+  t4: int = sub t2 y;
+
+.merge:
+  u: int = phi t1 .then1 t3 .then2 t4 .else2;
+  
+.exit:
+  print u;
+}
